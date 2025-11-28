@@ -23,7 +23,7 @@ export const batchUpsertProducts = async (products) => {
 
 export const findProducts = async (category, search) => {
     let sql = `
-        SELECT id, title, price, category, image_url, stock
+        SELECT id, title, price, description, category, image_url, stock
         FROM products
         WHERE 1=1
     `;

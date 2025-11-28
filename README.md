@@ -94,3 +94,53 @@ O Back-end está organizado em camadas para modularização:
 | **Controllers** | [server/src/controllers](server/src/controllers) | Contém a lógica de tratamento das requisições e a resposta HTTP. |
 | **Services/Repository** | [server/src/services](server/src/services) | Lógica de acesso ao banco de dados e manipulação de dados (transações, consultas). |
 | **Configuração DB** | [server/src/db/pool.js](server/src/db/pool.js) | Cria e gerencia o pool de conexões MySQL. |
+
+## 5. Arquitetura do Frontend (SPA Simplificada) 
+
+O frontend é composto por páginas HTML estáticas (`index.html` e `cart.html`) e lógica em **JavaScript** que se comunica com a API REST do Back-end. Ele simula uma Single Page Application (SPA) na experiência, gerenciando estado do carrinho e navegação por meio do `localStorage` do navegador e recarregamento de componentes DOM.
+
+O front-end é dividido em módulos com responsabilidades específicas:
+
+| Módulo | Arquivos Envolvidos | Função Principal |
+| :--- | :--- | :--- |
+| **Página Principal (Catálogo)** | `index.html`, `script.js` | Exibe a lista de produtos, permite pesquisa e filtragem por categoria. Contém a lógica de "Minhas Compras". |
+| **Página Carrinho** | `cart.html`, `cart.js` | Exibe o conteúdo do carrinho, permite ajustes de quantidade, esvaziar carrinho e iniciar o checkout. |
+| **Renderização do Carrinho** | `cartRenderer.js` | Responsável por ler o `localStorage` (`ecom_cart`) e transformar os itens em HTML para exibição na tabela. |
+| **Manipulação de Quantidade** | `quantityHandler.js` | Lógica de **aumentar/diminuir** a quantidade de um item no carrinho. **Chama o endpoint de validação (`/api/cart/validate`)** para garantir estoque antes de aumentar. |
+| **Checkout** | `checkout.js` | Gerencia o fluxo de finalização da compra: exibe um modal, coleta dados do cliente e **envia a transação para o Back-end (`/api/orders`)**. |
+| **Busca de Pedidos** | `myOrders.js` | Lógica no `index.html` para buscar pedidos de um cliente pelo e-mail (`/api/clients/:email/orders`) e renderizar a lista. |
+| **Mecanismo de Compra**| `cartSubmitSimple.js` | Lógica inicial (presente no catálogo) que **valida todos os itens do contador** via API (`/api/cart/validate`) e, se tudo estiver OK, salva no `localStorage` e redireciona para `cart.html`. |
+| **Categorias** | `categoria.js` | Funções utilitárias para extrair e popular o filtro de categorias na página principal. |
+
+---
+
+## 6. Persistência de Estado (Frontend) 
+
+O estado do carrinho é mantido no **`localStorage`** do navegador.
+
+* `ecom_counts`: Armazena a contagem simples de produtos em exibição no catálogo (`productId: quantity`).
+* `ecom_cart`: Armazena a versão **validada** e detalhada dos itens do carrinho (título, preço unitário, imagem, etc.), sendo lida pelo `cartRenderer.js`.
+
+**Fluxo de Adição ao Carrinho (via `index.html`):**
+
+1.  O usuário aumenta o contador no catálogo (`index.html`).
+2.  Ao clicar no botão do carrinho, a função em `cartSubmitSimple.js` é acionada.
+3.  `cartSubmitSimple.js` **itera sobre todos os itens** com contador > 0 e, para cada um, chama `POST /api/cart/validate` no Back-end.
+4.  Se todas as validações forem aprovadas, ele salva o array de produtos validados em `ecom_cart` e redireciona para `cart.html`.
+
+**Fluxo de Ajuste no Carrinho (via `cart.html`):**
+
+1.  O usuário clica em `+` ou `-` na tabela do carrinho.
+2.  `quantityHandler.js` é acionado.
+    * Para `+`: Ele chama `POST /api/cart/validate` com a nova quantidade desejada. Se o Back-end retornar sucesso, a quantidade é atualizada no `ecom_cart` e `ecom_counts`.
+    * Para `-`: A quantidade é diminuída localmente no `ecom_cart` e `ecom_counts` (sem necessidade de validação no Back-end, pois é apenas redução).
+
+---
+
+## 7. Pré-requisitos e Execução do Frontend
+
+Para o frontend funcionar corretamente, o **servidor Node.js (Back-end) deve estar rodando** em `http://localhost:3000`.
+
+1.  Certifique-se de que o Back-end está iniciado (`npm run dev` na pasta `server`).
+2.  Abra o arquivo `index.html` (ou utilize uma extensão de Live Server para carregá-lo via `http://`).
+3.  Acesse `index.html` para o catálogo e `cart.html` para o carrinho.
